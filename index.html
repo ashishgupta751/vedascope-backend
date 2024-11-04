@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VedascopeAI Chatbot</title>
+    <style>
+        body { font-family: Verdana, sans-serif; font-size: 12px; color: black; max-width: 600px; margin: auto; padding: 20px; }
+        #chatbox { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; font-family: Verdana, sans-serif; font-size: 12px; color: black; font-weight: normal; }
+        .message { margin: 5px 0; }
+        .user { color: black; font-weight: normal; }
+        .vedascopeai { color: black; font-weight: normal; }
+        #logo { display: block; margin: 0 auto 20px auto; width: 100px; } /* Center and resize the logo */
+    </style>
+</head>
+<body>
+    <!-- Logo at the top -->
+    <img id="logo" src="logo.png" alt="VedascopeAI Logo" />
+
+    <div id="chatbox"></div>
+    <input type="text" id="userInput" placeholder="Type here..." />
+    <button id="sendButton">Send</button>
+
+    <script>
+        // Store user data and step tracking
+        let userData = { name: '', email: '', phone: '', birthDetails: '' };
+        let currentStep = 'welcome';
+
+        // Function to add messages to the chatbox
+        function addMessageToChatbox(sender, message) {
+            const chatbox = document.getElementById('chatbox');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender.toLowerCase());
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatbox.appendChild(messageDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Initial welcome message
+        addMessageToChatbox('VedascopeAI', 'Hi, Welcome to VedascopeAI! Please provide your Full Name, Email, and Phone Number in the format: Name, Email, Phone.');
+
+        // Function to handle different steps of the conversation
+        async function handleUserInput(userMessage) {
+            if (currentStep === 'welcome') {
+                const detailsPattern = /^(?<name>[\w\s]+),?\s*(?<email>\S+@\S+\.\S+),?\s*(?<phone>\d{10,15})?$/;
+                const match = userMessage.match(detailsPattern);
+
+                if (match && match.groups) {
+                    userData.name = match.groups.name || userData.name;
+                    userData.email = match.groups.email || userData.email;
+                    userData.phone = match.groups.phone || userData.phone;
+
+                    addMessageToChatbox('VedascopeAI', 'Thank you! Please provide your Birth Details (e.g., 22-10-1975, Mumbai, 3:15 am).');
+                    currentStep = 'askBirthDetails';
+                } else {
+                    addMessageToChatbox('VedascopeAI', 'Please provide your Full Name, Email, and Phone Number in the format: Name, Email, Phone.');
+                }
+            } else if (currentStep === 'askBirthDetails') {
+                userData.birthDetails = userMessage;
+                addMessageToChatbox('VedascopeAI', 'Please choose one analysis type:\n1. Nakshatra Analysis\n2. Dasha Analysis\n3. Navamsa Chart Analysis\n4. Relationship Compatibility (Kundli Matching)\n5. Career and Financial Guidance\n6. Personalized Birth Chart Analysis (Janam Kundli)');
+                currentStep = 'chooseAnalysis';
+            } else if (currentStep === 'chooseAnalysis') {
+                const options = {
+                    '1': 'Nakshatra Analysis',
+                    '2': 'Dasha Analysis',
+                    '3': 'Navamsa Chart Analysis',
+                    '4': 'Relationship Compatibility (Kundli Matching)',
+                    '5': 'Career and Financial Guidance',
+                    '6': 'Personalized Birth Chart Analysis (Janam Kundli)'
+                };
+
+                const choice = options[userMessage] || Object.values(options).find(option => option.toLowerCase() === userMessage.toLowerCase());
+
+                if (choice) {
+                    // Send data to the backend with user's choice
+                    const response = await fetch('http://localhost:5000/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: userData.name,
+                            email: userData.email,
+                            phone: userData.phone,
+                            birthDetails: userData.birthDetails,
+                            analysisChoice: choice
+                        })
+                    });
+
+                    const data = await response.json();
+                    addMessageToChatbox('VedascopeAI', data.message);
+
+                    // Add a closing message
+                    addMessageToChatbox('VedascopeAI', "Thank you for using VedascopeAI! If you have more questions, feel free to ask.");
+                    currentStep = 'done';
+                } else {
+                    addMessageToChatbox('VedascopeAI', 'Please select a valid option from the list by number or name.');
+                }
+            }
+        }
+
+        // Function to send message
+        function sendMessage() {
+            const userMessage = document.getElementById('userInput').value;
+            addMessageToChatbox('User', userMessage);
+            handleUserInput(userMessage);
+            document.getElementById('userInput').value = ''; // Clear input field
+        }
+
+        // Handle Send Button Click
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+        // Handle Enter Key Press
+        document.getElementById('userInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission if inside a form
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
